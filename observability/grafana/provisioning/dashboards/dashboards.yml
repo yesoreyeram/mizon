@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: "LokiDashboards"
+    orgId: 1
+    folder: "Observability"
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/content
+      foldersFromFilesStructure: true
