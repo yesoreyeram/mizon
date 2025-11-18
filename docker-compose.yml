@@ -97,6 +97,53 @@ services:
     networks:
       - mizon-network
 
+  # Logs storage (Loki)
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: mizon-loki
+    command: ["-config.file=/etc/loki/config.yml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
+  # Log collector (Promtail)
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: mizon-promtail
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./observability/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: mizon-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
   # Backend Services
   auth-service:
     build:
@@ -107,7 +154,7 @@ services:
       - "8001:8001"
     environment:
       PORT: 8001
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
@@ -132,7 +179,7 @@ services:
       - "8002:8002"
     environment:
       PORT: 8002
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
@@ -155,7 +202,7 @@ services:
       - "8003:8003"
     environment:
       PORT: 8003
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
@@ -176,7 +223,7 @@ services:
       - "8004:8004"
     environment:
       PORT: 8004
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
@@ -198,7 +245,7 @@ services:
       - "8005:8005"
     environment:
       PORT: 8005
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
@@ -249,3 +296,5 @@ volumes:
   zookeeper_data:
   zookeeper_logs:
   kafka_data:
+  loki_data:
+  grafana_data:
