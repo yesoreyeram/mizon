@@ -1,0 +1,50 @@
+target: all,alertmanager
+
+server:
+  http_listen_port: 9009
+  log_level: info
+
+common:
+  storage:
+    backend: filesystem
+    filesystem:
+      dir: /data
+
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/blocks
+  bucket_store:
+    sync_dir: /data/tsdb-sync
+  tsdb:
+    dir: /data/tsdb
+
+compactor:
+  data_dir: /data/compactor
+  compaction_interval: 30m
+  deletion_delay: 2h
+
+ingester:
+  ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+ruler:
+  rule_path: /tmp/rules
+
+limits:
+  max_global_series_per_user: 0
+  max_global_series_per_metric: 0
+  ingestion_burst_size: 2000000
+  ingestion_rate: 1000000
+  max_label_names_per_series: 100
+
+frontend_worker:
+  grpc_client_config:
+    max_send_msg_size: 104857600
+    max_recv_msg_size: 104857600
+
+memberlist:
+  join_members: []
+  bind_port: 7946

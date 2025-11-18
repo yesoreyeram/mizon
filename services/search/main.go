@@ -14,6 +14,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var esClient *elasticsearch.Client
@@ -239,6 +240,8 @@ func main() {
 	router.Use(telemetry.MuxMiddleware("search-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
+	// Metrics endpoint
+	router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 	router.HandleFunc("/api/search", enableCORS(searchHandler)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/search/index", enableCORS(indexProductHandler)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/health", enableCORS(healthHandler)).Methods("GET", "OPTIONS")

@@ -13,6 +13,7 @@ import (
 	"mizon/telemetry"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -291,6 +292,8 @@ func main() {
 	router.Use(telemetry.MuxMiddleware("catalog-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
+	// Metrics endpoint
+	router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 	router.HandleFunc("/api/catalog/products", enableCORS(getProductsHandler)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/catalog/products/{id}", enableCORS(getProductHandler)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/catalog/products", enableCORS(createProductHandler)).Methods("POST", "OPTIONS")

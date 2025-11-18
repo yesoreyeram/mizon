@@ -12,6 +12,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -236,6 +237,8 @@ func main() {
 	router := mux.NewRouter()
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
+	// Metrics endpoint
+	router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 	router.HandleFunc("/api/orders", enableCORS(createOrderHandler)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/orders/{userId}", enableCORS(getUserOrdersHandler)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/orders/details/{orderId}", enableCORS(getOrderDetailsHandler)).Methods("GET", "OPTIONS")

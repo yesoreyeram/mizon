@@ -313,6 +313,33 @@ services:
       - mizon-network
     restart: unless-stopped
 
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: mizon-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
+  # Grafana Mimir (Prometheus-compatible long-term metrics store)
+  mimir:
+    image: grafana/mimir:2.12.0
+    container_name: mizon-mimir
+    command: ["-config.file=/etc/mimir/config.yml"]
+    ports:
+      - "9009:9009"
+    volumes:
+      - ./observability/mimir/config.yml:/etc/mimir/config.yml:ro
+      - mimir_data:/data
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
 networks:
   mizon-network:
     driver: bridge
@@ -327,6 +354,8 @@ volumes:
   loki_data:
   grafana_data:
   tempo_data:
+  prometheus_data:
+  mimir_data:
 
   # Traces storage (Tempo)
   

@@ -12,6 +12,7 @@ import (
 	"mizon/telemetry"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -309,6 +310,8 @@ func main() {
 	router.Use(telemetry.MuxMiddleware("cart-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
+	// Metrics endpoint
+	router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 	router.HandleFunc("/api/cart/{userId}", enableCORS(getCartHandler)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api/cart/{userId}/items", enableCORS(addItemHandler)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/cart/{userId}/items/{itemId}", enableCORS(updateItemHandler)).Methods("PUT", "OPTIONS")

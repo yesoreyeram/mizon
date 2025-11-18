@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var db *sql.DB
@@ -177,6 +178,8 @@ func main() {
 	router.Use(telemetry.MuxMiddleware("auth-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
+	// Metrics endpoint
+	router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 	router.HandleFunc("/api/auth/login", enableCORS(loginHandler)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/auth/validate", enableCORS(validateHandler)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/health", enableCORS(healthHandler)).Methods("GET", "OPTIONS")
