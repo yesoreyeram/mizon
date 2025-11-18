@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mizon/loggerx"
+	"mizon/telemetry"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,6 +21,7 @@ import (
 
 var collection *mongo.Collection
 var searchAPI string
+var httpClient = telemetry.NewHTTPClient()
 
 type Product struct {
 	ID          primitive.ObjectID `json:"id" bson:"_id,omitempty"`
@@ -44,7 +46,7 @@ func initMongo() error {
 	var err error
 
 	for i := 0; i < 30; i++ {
-		client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+		client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI).SetMonitor(telemetry.MongoMonitor()))
 		if err == nil {
 			err = client.Ping(ctx, nil)
 			if err == nil {
@@ -75,7 +77,7 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func getProductsHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	cursor, err := collection.Find(ctx, bson.M{})
@@ -105,7 +107,7 @@ func getProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	var product Product
@@ -128,7 +130,7 @@ func createProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	product.CreatedAt = time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	result, err := collection.InsertOne(ctx, product)
@@ -157,7 +159,7 @@ func createProductHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		url := fmt.Sprintf("%s/api/search/index", searchAPI)
-		resp, err := http.Post(url, "application/json", bytes.NewReader(data))
+		resp, err := httpClient.Post(url, "application/json", bytes.NewReader(data))
 		if err != nil {
 			loggerx.Errorf("catalog: failed to index product %s: %v", p.ID.Hex(), err)
 			return
@@ -175,7 +177,7 @@ func createProductHandler(w http.ResponseWriter, r *http.Request) {
 
 // Reindex all products from catalog into search service
 func reindexHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
 	cursor, err := collection.Find(ctx, bson.M{})
@@ -208,7 +210,7 @@ func reindexHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		url := fmt.Sprintf("%s/api/search/index", searchAPI)
-		resp, err := http.Post(url, "application/json", bytes.NewReader(data))
+		resp, err := httpClient.Post(url, "application/json", bytes.NewReader(data))
 		if err != nil {
 			failed++
 			continue
@@ -278,11 +280,15 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	loggerx.Setup()
+	if _, err := telemetry.Setup("catalog-service"); err != nil {
+		loggerx.Warnf("tracing setup failed: %v", err)
+	}
 	if err := initMongo(); err != nil {
 		loggerx.Fatalf("%v", err)
 	}
 
 	router := mux.NewRouter()
+	router.Use(telemetry.MuxMiddleware("catalog-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
 	router.HandleFunc("/api/catalog/products", enableCORS(getProductsHandler)).Methods("GET", "OPTIONS")

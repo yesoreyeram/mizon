@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"mizon/loggerx"
+	"mizon/telemetry"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gorilla/mux"
@@ -38,6 +38,7 @@ func initElasticsearch() error {
 
 	cfg := elasticsearch.Config{
 		Addresses: []string{esURL},
+		Transport: telemetry.OtelTransport(),
 	}
 
 	var err error
@@ -127,7 +128,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}`, query)
 
 	res, err := esClient.Search(
-		esClient.Search.WithContext(context.Background()),
+		esClient.Search.WithContext(r.Context()),
 		esClient.Search.WithIndex("products"),
 		esClient.Search.WithBody(strings.NewReader(searchQuery)),
 	)
@@ -227,11 +228,15 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	loggerx.Setup()
+	if _, err := telemetry.Setup("search-service"); err != nil {
+		loggerx.Warnf("tracing setup failed: %v", err)
+	}
 	if err := initElasticsearch(); err != nil {
 		loggerx.Fatalf("%v", err)
 	}
 
 	router := mux.NewRouter()
+	router.Use(telemetry.MuxMiddleware("search-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
 	router.HandleFunc("/api/search", enableCORS(searchHandler)).Methods("GET", "OPTIONS")

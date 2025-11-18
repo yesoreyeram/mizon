@@ -125,6 +125,23 @@ services:
       - mizon-network
     restart: unless-stopped
 
+  # Traces storage (Tempo)
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: mizon-tempo
+    user: "0:0"
+    command: ["-config.file=/etc/tempo/config.yml"]
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./observability/tempo/config.yml:/etc/tempo/config.yml:ro
+      - tempo_data:/var/tempo
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
   # Grafana for visualization
   grafana:
     image: grafana/grafana:10.4.2
@@ -140,6 +157,7 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - loki
+      - tempo
     networks:
       - mizon-network
     restart: unless-stopped
@@ -158,6 +176,8 @@ services:
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
+      TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: mizon
@@ -183,6 +203,8 @@ services:
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
+      TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       MONGO_URI: mongodb://mongodb:27017
       MONGO_DB: mizon_catalog
       SEARCH_API: http://search-service:8003
@@ -206,6 +228,8 @@ services:
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
+      TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       ELASTICSEARCH_URL: http://elasticsearch:9200
     depends_on:
       elasticsearch:
@@ -227,6 +251,8 @@ services:
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
+      TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       MONGO_URI: mongodb://mongodb:27017
       MONGO_DB: mizon_cart
     depends_on:
@@ -249,6 +275,8 @@ services:
       LOG_FORMAT: json
       LOG_REQUEST_BODY: "false"
       LOG_MAX_BODY: 2048
+      TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       KAFKA_BROKER: kafka:9092
       MONGO_URI: mongodb://mongodb:27017
       MONGO_DB: mizon_orders
@@ -298,3 +326,8 @@ volumes:
   kafka_data:
   loki_data:
   grafana_data:
+  tempo_data:
+
+  # Traces storage (Tempo)
+  
+  

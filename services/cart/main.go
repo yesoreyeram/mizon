@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mizon/loggerx"
+	"mizon/telemetry"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -55,7 +56,7 @@ func initMongo() error {
 	var err error
 
 	for i := 0; i < 30; i++ {
-		client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+		client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoURI).SetMonitor(telemetry.MongoMonitor()))
 		if err == nil {
 			err = client.Ping(ctx, nil)
 			if err == nil {
@@ -89,7 +90,7 @@ func getCartHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["userId"]
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	var cart Cart
@@ -122,7 +123,7 @@ func addItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	newItem := CartItem(req)
@@ -181,7 +182,7 @@ func updateItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	var cart Cart
@@ -224,7 +225,7 @@ func removeItemHandler(w http.ResponseWriter, r *http.Request) {
 	userID := vars["userId"]
 	itemID := vars["itemId"]
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	var cart Cart
@@ -262,7 +263,7 @@ func clearCartHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["userId"]
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	update := bson.M{
@@ -297,11 +298,15 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	loggerx.Setup()
+	if _, err := telemetry.Setup("cart-service"); err != nil {
+		loggerx.Warnf("tracing setup failed: %v", err)
+	}
 	if err := initMongo(); err != nil {
 		loggerx.Fatalf("%v", err)
 	}
 
 	router := mux.NewRouter()
+	router.Use(telemetry.MuxMiddleware("cart-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
 	router.HandleFunc("/api/cart/{userId}", enableCORS(getCartHandler)).Methods("GET", "OPTIONS")

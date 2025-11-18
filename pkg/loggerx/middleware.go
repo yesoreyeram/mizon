@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Config struct {
@@ -44,13 +46,27 @@ func Middleware(cfg Config) func(http.Handler) http.Handler {
 				r.Body = io.NopCloser(bytes.NewReader(data))
 			}
 			rec := &statusRecorder{ResponseWriter: w, status: 200}
+			// Extract trace/span if present
+			var traceID, spanID string
+			if sp := trace.SpanFromContext(r.Context()); sp != nil {
+				sc := sp.SpanContext()
+				if sc.HasTraceID() {
+					traceID = sc.TraceID().String()
+				}
+				if sc.HasSpanID() {
+					spanID = sc.SpanID().String()
+				}
+			}
+
 			Debugw("request", map[string]interface{}{
-				"method": r.Method,
-				"uri":    r.URL.RequestURI(),
-				"remote": r.RemoteAddr,
-				"ua":     r.UserAgent(),
-				"len":    r.Header.Get("Content-Length"),
-				"body":   bodyPreview,
+				"method":   r.Method,
+				"uri":      r.URL.RequestURI(),
+				"remote":   r.RemoteAddr,
+				"ua":       r.UserAgent(),
+				"len":      r.Header.Get("Content-Length"),
+				"body":     bodyPreview,
+				"trace_id": traceID,
+				"span_id":  spanID,
 			})
 			next.ServeHTTP(rec, r)
 			dur := time.Since(start)
@@ -60,6 +76,8 @@ func Middleware(cfg Config) func(http.Handler) http.Handler {
 				"status":   rec.status,
 				"size":     rec.size,
 				"duration": dur.String(),
+				"trace_id": traceID,
+				"span_id":  spanID,
 			})
 		})
 	}

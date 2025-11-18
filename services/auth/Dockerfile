@@ -3,6 +3,7 @@ FROM golang AS builder
 # Copy shared logger module and service module files
 WORKDIR /app
 COPY pkg/loggerx /app/pkg/loggerx
+COPY pkg/telemetry /app/pkg/telemetry
 
 # Set workdir to service and download deps
 WORKDIR /app/services/auth

@@ -33,8 +33,11 @@ scrape_configs:
             status: fields.status
             size: fields.size
             duration: fields.duration
+            trace_id: fields.trace_id
+            span_id: fields.span_id
       - labels:
           level:
           method:
           path:
           status:
+          trace_id:

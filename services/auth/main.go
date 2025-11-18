@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mizon/loggerx"
+	"mizon/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -52,8 +53,12 @@ func initDB() error {
 		host, port, user, password, dbname)
 
 	var err error
+	driverName := "postgres"
+	if dn, derr := telemetry.RegisterPostgres("postgres"); derr == nil {
+		driverName = dn
+	}
 	for i := 0; i < 30; i++ {
-		db, err = sql.Open("postgres", connStr)
+		db, err = sql.Open(driverName, connStr)
 		if err == nil {
 			err = db.Ping()
 			if err == nil {
@@ -90,7 +95,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
-	err := db.QueryRow("SELECT id, username, email FROM users WHERE username = $1 AND password = $2",
+	err := db.QueryRowContext(r.Context(), "SELECT id, username, email FROM users WHERE username = $1 AND password = $2",
 		req.Username, req.Password).Scan(&user.ID, &user.Username, &user.Email)
 
 	if err != nil {
@@ -102,7 +107,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	token := uuid.New().String()
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	_, err = db.Exec("INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)",
+	_, err = db.ExecContext(r.Context(), "INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)",
 		user.ID, token, expiresAt)
 
 	if err != nil {
@@ -130,7 +135,7 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var userID string
 	var expiresAt time.Time
-	err := db.QueryRow("SELECT user_id, expires_at FROM sessions WHERE token = $1", token).
+	err := db.QueryRowContext(r.Context(), "SELECT user_id, expires_at FROM sessions WHERE token = $1", token).
 		Scan(&userID, &expiresAt)
 
 	if err != nil || time.Now().After(expiresAt) {
@@ -160,12 +165,16 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	loggerx.Setup()
+	if _, err := telemetry.Setup("auth-service"); err != nil {
+		loggerx.Warnf("tracing setup failed: %v", err)
+	}
 	if err := initDB(); err != nil {
 		loggerx.Fatalf("%v", err)
 	}
 	defer db.Close()
 
 	router := mux.NewRouter()
+	router.Use(telemetry.MuxMiddleware("auth-service"))
 	cfg := loggerx.Config{LogRequestBody: loggerx.EnvBool("LOG_REQUEST_BODY", false), MaxBody: loggerx.EnvInt("LOG_MAX_BODY", 2048)}
 	router.Use(loggerx.Middleware(cfg))
 	router.HandleFunc("/api/auth/login", enableCORS(loginHandler)).Methods("POST", "OPTIONS")

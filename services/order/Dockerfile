@@ -13,6 +13,7 @@ WORKDIR /app
 
 # Include shared logger module
 COPY pkg/loggerx /app/pkg/loggerx
+COPY pkg/telemetry /app/pkg/telemetry
 
 # Build the service
 WORKDIR /app/services/order
