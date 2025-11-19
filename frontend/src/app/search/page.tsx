@@ -84,7 +84,7 @@ export default function SearchPage() {
         {searchParams.get("q") && (
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">
-              Search Results for "{searchParams.get("q")}"
+              Search Results for &quot;{searchParams.get("q")}&quot;
             </h1>
             <p className="text-gray-600 mt-2">
               {isLoading
@@ -151,7 +151,7 @@ export default function SearchPage() {
               No Results Found
             </h2>
             <p className="mt-2 text-gray-600">
-              We couldn't find any products matching "{searchParams.get("q")}"
+              We couldn&apos;t find any products matching &quot;{searchParams.get("q")}&quot;
             </p>
             <p className="mt-2 text-gray-500 text-sm">
               Try different keywords or browse all products
