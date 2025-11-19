@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-lint-test:
+    name: Backend Lint and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, catalog, cart, order, search]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('services/${{ matrix.service }}/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run golangci-lint
+        working-directory: services/${{ matrix.service }}
+        run: golangci-lint run --timeout=5m
+        continue-on-error: true
+
+      - name: Run go vet
+        working-directory: services/${{ matrix.service }}
+        run: go vet ./...
+
+      - name: Run tests
+        working-directory: services/${{ matrix.service }}
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/${{ matrix.service }}/coverage.out
+          flags: ${{ matrix.service }}
+        continue-on-error: true
+
+  backend-build:
+    name: Backend Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, catalog, cart, order, search]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('services/${{ matrix.service }}/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build service
+        working-directory: services/${{ matrix.service }}
+        run: go build -v -o /tmp/${{ matrix.service }}-service ./...
+
+  frontend-lint-test-build:
+    name: Frontend Lint, Test and Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: yarn lint
+
+      - name: Run tests
+        working-directory: frontend
+        run: yarn test --coverage --passWithNoTests
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+        continue-on-error: true
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build

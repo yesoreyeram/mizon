@@ -54,6 +54,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
       <div className="h-48 bg-gray-200 flex items-center justify-center">
         {product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`https://placehold.co/300`}
             alt={product.name}
