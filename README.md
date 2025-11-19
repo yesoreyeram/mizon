@@ -37,7 +37,14 @@ This application demonstrates a microservices architecture with the following se
 
 ## Features
 
-- ✅ User Authentication (Basic Auth: admin/admin)
+- ✅ **Secure User Authentication**
+  - User registration with strong password requirements
+  - Signin with remember me functionality
+  - Password reset via email (token-based)
+  - User profile management
+  - Bcrypt password hashing
+  - Rate limiting on auth endpoints
+  - Session management
 - ✅ Product Catalog Browsing
 - ✅ Category-based Navigation
 - ✅ Product Search
@@ -114,8 +121,16 @@ sleep 60
 
 ### Auth Service (http://localhost:8001)
 
-- `POST /api/auth/login` - Login with username/password
+- `POST /api/auth/signup` - Register a new user
+- `POST /api/auth/login` - Login with username/password (supports remember me)
+- `POST /api/auth/logout` - Logout and invalidate session
 - `GET /api/auth/validate` - Validate token
+- `GET /api/auth/profile` - Get user profile
+- `PUT /api/auth/profile` - Update user profile
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
+
+📖 **[Complete Auth API Documentation](docs/AUTH_API.md)**
 
 ### Catalog Service (http://localhost:8002)
 
@@ -415,9 +430,12 @@ docker-compose down -v
 
 ## Future Enhancements
 
-- JWT-based authentication
+- ~~JWT-based authentication~~ ✅ (Token-based auth implemented)
 - Payment gateway integration
-- User registration and profile management
+- ~~User registration and profile management~~ ✅ (Implemented)
+- Email verification for new accounts
+- Two-factor authentication (2FA)
+- OAuth integration (Google, GitHub, etc.)
 - Product reviews and ratings
 - Recommendation engine
 - Admin dashboard
