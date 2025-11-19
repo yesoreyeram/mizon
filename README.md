@@ -14,6 +14,11 @@ This application demonstrates a microservices architecture with the following se
 - **Cart Service** (Port 8004): Shopping cart management using MongoDB
 - **Order Service** (Port 8005): Order processing using Kafka messaging
 
+### Simulator Services
+
+- **Product Generator**: Generates 25-37 random products per minute for testing
+- **User Simulator**: Generates 2-7 random user signups per minute (configurable)
+
 ### Frontend
 
 - **Next.js App** (Port 3000): React-based UI with TypeScript and TailwindCSS
@@ -168,7 +173,9 @@ mizon/
 │   ├── catalog/           # Product catalog service
 │   ├── search/            # Search service
 │   ├── cart/              # Shopping cart service
-│   └── order/             # Order processing service
+│   ├── order/             # Order processing service
+│   ├── product-generator/ # Product generation simulator
+│   └── user-simulator/    # User signup simulator
 ├── frontend/              # Next.js frontend application
 ├── scripts/
 │   ├── build-services.sh  # Build all Go services
@@ -258,6 +265,16 @@ Each service uses the following default environment variables (configured in doc
 - `NEXT_PUBLIC_SEARCH_API=http://localhost:8003`
 - `NEXT_PUBLIC_CART_API=http://localhost:8004`
 - `NEXT_PUBLIC_ORDER_API=http://localhost:8005`
+
+**User Simulator:**
+
+- `AUTH_SERVICE_URL=http://auth-service:8001`
+- `MIN_USERS_PER_MINUTE=2` (minimum users to generate per minute)
+- `MAX_USERS_PER_MINUTE=7` (maximum users to generate per minute)
+- `LOG_LEVEL=INFO`
+- `LOG_FORMAT=json`
+
+The user simulator generates random users with realistic names, unique usernames, and secure passwords that meet all authentication requirements. It spreads requests evenly across each minute to avoid rate limiting.
 
 ## Data Models
 

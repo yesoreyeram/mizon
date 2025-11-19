@@ -304,6 +304,23 @@ services:
       - mizon-network
     restart: unless-stopped
 
+  user-simulator:
+    build:
+      context: .
+      dockerfile: services/user-simulator/Dockerfile
+    container_name: mizon-user-simulator
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8001
+      MIN_USERS_PER_MINUTE: "2"
+      MAX_USERS_PER_MINUTE: "7"
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+    depends_on:
+      - auth-service
+    networks:
+      - mizon-network
+    restart: unless-stopped
+
   # Frontend
   frontend:
     build:
