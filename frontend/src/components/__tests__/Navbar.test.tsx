@@ -13,6 +13,8 @@ describe('Navbar', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    // Clear localStorage before each test
+    Storage.prototype.getItem = jest.fn(() => null)
   })
 
   it('renders the Mizon logo', () => {
@@ -34,13 +36,25 @@ describe('Navbar', () => {
     expect(mockProps.onSearchChange).toHaveBeenCalledWith('laptop')
   })
 
-  it('renders Cart button', () => {
+  it('renders Cart button when logged in', () => {
+    // Mock localStorage with user data
+    Storage.prototype.getItem = jest.fn((key) => {
+      if (key === 'username') return 'testuser'
+      return null
+    })
+    
     render(<Navbar {...mockProps} />)
     const cartButton = screen.getByText('Cart')
     expect(cartButton).toBeInTheDocument()
   })
 
   it('calls onCartClick when cart button is clicked', () => {
+    // Mock localStorage with user data
+    Storage.prototype.getItem = jest.fn((key) => {
+      if (key === 'username') return 'testuser'
+      return null
+    })
+    
     render(<Navbar {...mockProps} />)
     const cartButton = screen.getByText('Cart')
 
@@ -48,15 +62,35 @@ describe('Navbar', () => {
     expect(mockProps.onCartClick).toHaveBeenCalled()
   })
 
-  it('renders Orders link', () => {
+  it('renders Orders link when logged in', () => {
+    // Mock localStorage with user data
+    Storage.prototype.getItem = jest.fn((key) => {
+      if (key === 'username') return 'testuser'
+      return null
+    })
+    
     render(<Navbar {...mockProps} />)
     const ordersLink = screen.getByText('Orders')
     expect(ordersLink).toBeInTheDocument()
   })
 
-  it('displays admin user', () => {
+  it('displays Sign In button when not logged in', () => {
+    // Clear localStorage
+    Storage.prototype.getItem = jest.fn(() => null)
+    
     render(<Navbar {...mockProps} />)
-    expect(screen.getByText('admin')).toBeInTheDocument()
+    expect(screen.getByText('Sign In')).toBeInTheDocument()
+  })
+
+  it('displays username when logged in', () => {
+    // Mock localStorage with user data
+    Storage.prototype.getItem = jest.fn((key) => {
+      if (key === 'username') return 'testuser'
+      return null
+    })
+    
+    render(<Navbar {...mockProps} />)
+    expect(screen.getByText('testuser')).toBeInTheDocument()
   })
 
   it('calls onSearch when search form is submitted', () => {
