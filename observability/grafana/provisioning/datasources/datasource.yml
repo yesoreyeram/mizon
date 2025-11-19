@@ -56,3 +56,16 @@ datasources:
       httpHeaderName1: X-Scope-OrgID
     secureJsonData:
       httpHeaderValue1: anonymous
+
+  - name: Elasticsearch
+    uid: elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: products
+    isDefault: false
+    jsonData:
+      esVersion: "8.0.0"
+      timeField: "indexed_at"
+      timeInterval: "10s"
+      includeFrozen: false
