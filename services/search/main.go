@@ -70,7 +70,8 @@ func createIndex() error {
 				"price": { "type": "float" },
 				"category": { "type": "keyword" },
 				"stock": { "type": "integer" },
-				"image_url": { "type": "keyword" }
+				"image_url": { "type": "keyword" },
+				"indexed_at": { "type": "date" }
 			}
 		}
 	}`
@@ -186,7 +187,19 @@ func indexProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(product)
+	// Enrich product with indexing timestamp for Grafana/ES time-based queries
+	payload := map[string]interface{}{
+		"id":          product.ID,
+		"name":        product.Name,
+		"description": product.Description,
+		"price":       product.Price,
+		"category":    product.Category,
+		"stock":       product.Stock,
+		"image_url":   product.ImageURL,
+		"indexed_at":  time.Now().UTC().Format(time.RFC3339),
+	}
+
+	data, err := json.Marshal(payload)
 	if err != nil {
 		http.Error(w, "Error encoding product", http.StatusInternalServerError)
 		return
